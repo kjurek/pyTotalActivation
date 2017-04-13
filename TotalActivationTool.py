@@ -3,17 +3,20 @@ import numpy as np
 import logging
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-class DetrendType(object):
-    DCT, NORMALIZE = range(2)
-
-
-class Config(object):
-    detrend = DetrendType.NORMALIZE
-
-
 class TotalActivationTool(object):
     def __init__(self):
-        self.config = None
+        # Method_time: 'B', 'S' or 'W'
+        # Method_space: 'S', 'T', None
+        # HRF: 'bold', 'spmhrf'
+        self.config = {'Method_time' : 'B',
+                       'Method_space' : None,
+                       'HRF' : 'bold',
+                       'Detrend': True,
+                       'Standardize' : True,
+                       'Highpass' : 0.01,
+                       'Lowpass' : None,
+                       'TR' : 2,
+                       'Lambda' : 1/0.8095}
         self.voxels = None
 
     def load(self, data_path, atlas_path, config):
@@ -26,21 +29,41 @@ class TotalActivationTool(object):
         logging.debug('Dimension={}'.format(self.dimension))
         logging.debug('Voxels.shape={}'.format(self.voxels.shape))
 
-    def detrend(self):
-        if self.config.detrend == DetrendType.NORMALIZE:
-            self.tcn = self.__detrend_normalize()
-        elif self.config.detrend == DetrendType.DCT:
-            self.tcn = self.__detrend_dct()
+    def load_nifti_data(self, d, a):
+        '''
+        Basic function to load NIFTI time-series and flatten them to 2D array
 
-    def __detrend_normalize(self):
-        tcn = np.zeros((self.voxels.shape[1], self.voxels.shape[0]))
-        logging.debug('tcn.shape={}'.format(tcn.shape))
-        for i in range(self.voxels.shape[0]):
-            tcn[:, i] = self.voxels[i] / np.std(self.voxels[i])
-        logging.debug('tcn.shape={}, tcn={}'.format(tcn.shape, tcn))
+        Inputs:
+        d : data (4D NIFTI file)
+        a : atlas (3D NIFTI file)
+        '''
 
-    def detrend_dct(self):
-        pass
+        import nibabel as nib
+        from nilearn.input_data import NiftiMasker
 
-    def regularization(self):
-        pass
+        self.atlas_masker = NiftiMasker(mask_strategy='background',
+                           memory="nilearn_cache", memory_level=2,
+                           standardize=False,
+                           detrend=False)
+
+        self.data_masker = NiftiMasker(mask_strategy='epi',
+                           memory="nilearn_cache", memory_level=2,
+                           standardize=self.config['Standardize'],
+                           detrend=self.config['Detrend'],
+                           high_pass = self.config['Highpass'],
+                           low_pass = self.config['Lowpass'],
+                           t_r = self.config['TR'])
+
+        self.atlas_masker.fit(a)
+        self.data_masker.fit(d)
+        x1 = self.data_masker.mask_img_.get_data()
+        x2 = self.atlas_masker.mask_img_.get_data()
+        x1 *= x2
+        x2 *= x1
+        self.data = self.data_masker.transform(d)
+        self.atlas = self.atlas_masker.transform(a)
+        self.data_shape = self.data.shape
+        self.dimension = len(self.data.shape)
+        self.n_voxels = self.data.shape[1]
+        logging.debug('Dimension={}'.format(self.dimension))
+        logging.debug('Voxels.shape={}'.format(self.n_voxels))
