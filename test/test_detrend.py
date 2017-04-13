@@ -26,7 +26,7 @@ class MatlabComparisonTestDetrend(TestBase):
 
     def test_detrend_from_nilearn(self):
         test_data = sio.loadmat(os.path.join(self.data_path, 'detrend', 'MyDetrend_normalize_nii.mat'))
-        result = np.transpose(signal.clean(signals=test_data['TC'], t_r=2))
+        result = np.transpose(signal.clean(signals=test_data['TC'], t_r=2, high_pass=0.008))
         self.assertEquals(test_data['TCN'].shape, result.shape)
 
         random_signal_index = random.choice(range(result.shape[0]))
