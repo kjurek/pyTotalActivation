@@ -3,14 +3,6 @@ import numpy as np
 import logging
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-class DetrendType(object):
-    DCT, NORMALIZE = range(2)
-
-
-class Config(object):
-    detrend = DetrendType.NORMALIZE
-
-
 class TotalActivationTool(object):
     def __init__(self):
         # Method_time: 'B', 'S' or 'W'
