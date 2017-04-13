@@ -56,8 +56,10 @@ class TotalActivationTool(object):
 
         self.atlas_masker.fit(a)
         self.data_masker.fit(d)
-        self.data_masker.mask_img_ *= self.atlas_masker.mask_img_
-        self.atlas_masker.mask_img_ *= self.data_masker.mask_img_
+        x1 = self.data_masker.mask_img_.get_data()
+        x2 = self.atlas_masker.mask_img_.get_data()
+        x1 *= x2
+        x2 *= x1
         self.data = self.data_masker.transform(d)
         self.atlas = self.atlas_masker.transform(a)
         self.data_shape = self.data.shape
