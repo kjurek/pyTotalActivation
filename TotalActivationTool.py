@@ -13,11 +13,18 @@ class Config(object):
 
 class TotalActivationTool(object):
     def __init__(self):
-        self.config = {'Detrend': True,
+        # Method_time: 'B', 'S' or 'W'
+        # Method_space: 'S', 'T', None
+        # HRF: 'bold', 'spmhrf'
+        self.config = {'Method_time' = 'B',
+                       'Method_space' = None,
+                       'HRF' = 'bold',
+                       'Detrend': True,
                        'Standardize' : True,
                        'Highpass' : 0.01,
                        'Lowpass' : None,
-                       'TR' : 2}
+                       'TR' : 2,
+                       'Lambda' : 1/0.8095}
         self.voxels = None
 
     def load(self, data_path, atlas_path, config):
