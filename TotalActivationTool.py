@@ -56,22 +56,3 @@ class TotalActivationTool(object):
         self.voxels = self.data.shape[1]
         logging.debug('Dimension={}'.format(self.dimension))
         logging.debug('Voxels.shape={}'.format(self.voxels))
-
-    def detrend(self):
-        if self.config.detrend == DetrendType.NORMALIZE:
-            self.tcn = self.__detrend_normalize()
-        elif self.config.detrend == DetrendType.DCT:
-            self.tcn = self.__detrend_dct()
-
-    def __detrend_normalize(self):
-        tcn = np.zeros((self.voxels.shape[1], self.voxels.shape[0]))
-        logging.debug('tcn.shape={}'.format(tcn.shape))
-        for i in range(self.voxels.shape[0]):
-            tcn[:, i] = self.voxels[i] / np.std(self.voxels[i])
-        logging.debug('tcn.shape={}, tcn={}'.format(tcn.shape, tcn))
-
-    def detrend_dct(self):
-        pass
-
-    def regularization(self):
-        pass
