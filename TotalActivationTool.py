@@ -29,19 +29,23 @@ class TotalActivationTool(object):
         logging.debug('Dimension={}'.format(self.dimension))
         logging.debug('Voxels.shape={}'.format(self.voxels.shape))
 
-    def load_nifti(self, d, a):
+    def load_nifti_data(self, d, a):
         '''
         Basic function to load NIFTI time-series and flatten them to 2D array
 
         Imputs:
         d : data (4D NIFTI file)
-        a : atlas (3D NIFTI file)
         '''
 
         import nibabel as nib
         from nilearn.input_data import NiftiMasker
 
-        self.masker = NiftiMasker(mask_strategy='epi',
+        self.atlas_masker = NiftiMasker(mask_strategy='background',
+                           memory="nilearn_cache", memory_level=2,
+                           standardize=False,
+                           detrend=False)
+
+        self.data_masker = NiftiMasker(mask_strategy='epi',
                            memory="nilearn_cache", memory_level=2,
                            standardize=self.config['Standardize'],
                            detrend=self.config['Detrend'],
@@ -49,8 +53,10 @@ class TotalActivationTool(object):
                            low_pass = self.config['Lowpass'],
                            t_r = self.config['TR'])
 
-        self.masker.fit(d)
-        self.data = self.masker.transform(d)
+        self.atlas_masker.fit(a)
+        self.data_masker.fit(d)
+        self.data_masker.mask_img_ *= self.atlas_masker.mask_img_
+        self.data = self.data_masker.transform(d)
         self.data_shape = self.data.shape
         self.dimension = len(self.data.shape)
         self.voxels = self.data.shape[1]
