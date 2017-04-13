@@ -3,14 +3,6 @@ import numpy as np
 import logging
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-class DetrendType(object):
-    DCT, NORMALIZE = range(2)
-
-
-class Config(object):
-    detrend = DetrendType.NORMALIZE
-
-
 class TotalActivationTool(object):
     def __init__(self):
         # Method_time: 'B', 'S' or 'W'
@@ -64,22 +56,3 @@ class TotalActivationTool(object):
         self.voxels = self.data.shape[1]
         logging.debug('Dimension={}'.format(self.dimension))
         logging.debug('Voxels.shape={}'.format(self.voxels.shape))
-
-    def detrend(self):
-        if self.config.detrend == DetrendType.NORMALIZE:
-            self.tcn = self.__detrend_normalize()
-        elif self.config.detrend == DetrendType.DCT:
-            self.tcn = self.__detrend_dct()
-
-    def __detrend_normalize(self):
-        tcn = np.zeros((self.voxels.shape[1], self.voxels.shape[0]))
-        logging.debug('tcn.shape={}'.format(tcn.shape))
-        for i in range(self.voxels.shape[0]):
-            tcn[:, i] = self.voxels[i] / np.std(self.voxels[i])
-        logging.debug('tcn.shape={}, tcn={}'.format(tcn.shape, tcn))
-
-    def detrend_dct(self):
-        pass
-
-    def regularization(self):
-        pass
