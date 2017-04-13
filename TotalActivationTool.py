@@ -33,8 +33,9 @@ class TotalActivationTool(object):
         '''
         Basic function to load NIFTI time-series and flatten them to 2D array
 
-        Imputs:
+        Inputs:
         d : data (4D NIFTI file)
+        a : atlas (3D NIFTI file)
         '''
 
         import nibabel as nib
