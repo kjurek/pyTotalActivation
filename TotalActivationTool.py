@@ -16,9 +16,9 @@ class TotalActivationTool(object):
         # Method_time: 'B', 'S' or 'W'
         # Method_space: 'S', 'T', None
         # HRF: 'bold', 'spmhrf'
-        self.config = {'Method_time' = 'B',
-                       'Method_space' = None,
-                       'HRF' = 'bold',
+        self.config = {'Method_time' : 'B',
+                       'Method_space' : None,
+                       'HRF' : 'bold',
                        'Detrend': True,
                        'Standardize' : True,
                        'Highpass' : 0.01,
@@ -57,13 +57,13 @@ class TotalActivationTool(object):
                            low_pass = self.config['Lowpass'],
                            t_r = self.config['TR'])
 
-        self.masker.fit(data)
-        self.data = self.masker.transform(data)
+        self.masker.fit(d)
+        self.data = self.masker.transform(d)
         self.data_shape = self.data.shape
         self.dimension = len(self.data.shape)
         self.voxels = self.data.shape[1]
         logging.debug('Dimension={}'.format(self.dimension))
-        logging.debug('Voxels.shape={}'.format(self.voxels.shape))
+        logging.debug('Voxels.shape={}'.format(self.voxels))
 
     def detrend(self):
         if self.config.detrend == DetrendType.NORMALIZE:
