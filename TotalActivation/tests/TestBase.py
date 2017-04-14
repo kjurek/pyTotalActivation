@@ -11,4 +11,4 @@ def traverse_matlab_files(path):
 class TestBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.data_path = os.path.join(os.path.dirname(__file__), 'data')
+        cls.data_path = os.path.join(os.path.dirname(__file__), 'test_data')
