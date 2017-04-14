@@ -1,9 +1,11 @@
+from __future__ import absolute_import, division, print_function
 import scipy.io as sio
 import numpy as np
 import logging
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
+__all__ = ["TotalActivation"]
 
 class TotalActivation(object):
     def __init__(self):
@@ -23,13 +25,13 @@ class TotalActivation(object):
         self.atlas = None
 
     def load_matlab_data(self, d, a):
-        '''
+        """
         Loads data and atlas in matlab format
 
         Inputs:
         d : data (Matlab file with 4D matrix 'data' variable)
         a : atlas (Matlab file with 3D matrix 'atlas' variable)
-        '''
+        """
         data = sio.loadmat(d)['data']
         self.atlas = sio.loadmat(a)['atlas']
         self.data = data[np.nonzero(self.atlas * np.ndarray.sum(data, axis=len(data.shape) - 1))]
@@ -37,15 +39,13 @@ class TotalActivation(object):
         logging.debug('self.atlas.shape={}'.format(self.atlas.shape))
 
     def load_nifti_data(self, d, a):
-        '''
+        """
         Basic function to load NIFTI time-series and flatten them to 2D array
 
         Inputs:
         d : data (4D NIFTI file)
         a : atlas (3D NIFTI file)
-        '''
-
-        import nibabel as nib
+        """
         from nilearn.input_data import NiftiMasker
 
         atlas_masker = NiftiMasker(mask_strategy='background',
