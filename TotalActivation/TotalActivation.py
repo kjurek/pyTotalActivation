@@ -73,5 +73,6 @@ class TotalActivation(object):
         logging.debug('self.atlas.shape={}'.format(self.atlas.shape))
 
 
+
 if __name__ == '__main__':
     ta = TotalActivation()
