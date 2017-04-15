@@ -1,11 +1,16 @@
 from __future__ import absolute_import, division, print_function
-import scipy.io as sio
-import numpy as np
+
 import logging
+
+import numpy as np
+import scipy.io as sio
+
+from TotalActivation.filters import hrf
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 __all__ = ["TotalActivation"]
+
 
 class TotalActivation(object):
     def __init__(self):
@@ -23,6 +28,31 @@ class TotalActivation(object):
                        'Lambda': 1 / 0.8095}
         self.data = None
         self.atlas = None
+
+        self.get_hrf_parameters()
+
+    def get_hrf_parameters(self):
+        """
+        Prepares a field with HRF parameters
+
+        :return:
+        """
+
+        if self.config['HRF'] == 'bold':
+            a, psi = hrf.bold_parameters()
+        elif self.config['HRF'] == 'spmhrf':
+            a, psi = hrf.spmhrf_parameters()
+        else:
+            raise ValueError("HRF must be either bold or spmhrf")
+
+        if self.config['Method_time'] == 'B':
+            self.hrfparams = hrf.block_filter(a, psi, self.config['TR'])
+        elif self.config['Method_time'] == 'S':
+            self.hrfparams = hrf.spike_filter(a, psi, self.config['TR'])
+        elif self.config['Method_time'] == 'W':
+            raise ValueError('Wiener method not yet implemented')
+        else:
+            raise ValueError('Method_time has to be B, S or W')
 
     def load_matlab_data(self, d, a):
         """
@@ -71,7 +101,6 @@ class TotalActivation(object):
         self.atlas = atlas_masker.transform(a)
         logging.debug('self.data.shape={}'.format(self.data.shape))
         logging.debug('self.atlas.shape={}'.format(self.atlas.shape))
-
 
 
 if __name__ == '__main__':
