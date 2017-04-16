@@ -6,6 +6,7 @@ import numpy as np
 import scipy.io as sio
 
 from TotalActivation.filters import hrf
+from TotalActivation.process.temporal import wiener
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
@@ -28,10 +29,13 @@ class TotalActivation(object):
                        'Lambda': 1 / 0.8095}
         self.data = None
         self.atlas = None
+        self.deconvolved_ = None
+        self.n_voxels = 0
+        self.n_tp = 0
 
-        self.get_hrf_parameters()
+        self._get_hrf_parameters()
 
-    def get_hrf_parameters(self):
+    def _get_hrf_parameters(self):
         """
         Prepares a field with HRF parameters
 
@@ -47,12 +51,51 @@ class TotalActivation(object):
 
         if self.config['Method_time'] == 'B':
             self.hrfparams = hrf.block_filter(a, psi, self.config['TR'])
+            self.t_iter = 500
         elif self.config['Method_time'] == 'S':
             self.hrfparams = hrf.spike_filter(a, psi, self.config['TR'])
+            self.t_iter = 200
         elif self.config['Method_time'] == 'W':
-            raise ValueError('Wiener method not yet implemented')
+            self.hrfparams = hrf.block_filter(a, psi, self.config['TR'])
+            self.t_iter = 1
         else:
             raise ValueError('Method_time has to be B, S or W')
+
+    def _temporal(self):
+        """
+        Temporal regularization.
+        """
+
+        if config['Method_time'] == 'B' or config['Method_time'] == 'S':
+            print("Methods not yet implemented")
+        elif config['Method_time'] == 'W':
+            self.deconvolved_ = wiener(self.data, self.hrfparams[0], self.config['Lambda'], self.n_voxels, self.n_tp)
+        else:
+            print("Wrong temporal deconvolution method; must be B, S or W")
+
+    def _spatial(self):
+        """
+        Spatial regularization.
+        """
+
+        print("Spatial regularization not yet implemented")
+
+    def _deconvolve(self):
+        """
+        Main control function for deconvolution
+
+        :return:
+        """
+
+        if self.config['Method_space'] == None:
+            self.t_iter *= 5
+            self._temporal()
+        elif self.config['Method_space'] == 'S':
+            print("Structured sparsity spatial regularization not yet implemented")
+        elif self.config['Method_space'] == 'T':
+            print("Tikhonov spatial regularization not yet implemented")
+        else:
+            raise ValueError("Method_space must be S, T or None")
 
     def load_matlab_data(self, d, a):
         """
@@ -99,6 +142,8 @@ class TotalActivation(object):
         x2 *= x1
         self.data = data_masker.transform(d)
         self.atlas = atlas_masker.transform(a)
+        self.n_voxels = self.data.shape[1]
+        self.n_tp = self.data.shape[0]
         logging.debug('self.data.shape={}'.format(self.data.shape))
         logging.debug('self.atlas.shape={}'.format(self.atlas.shape))
 
