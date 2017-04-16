@@ -42,12 +42,12 @@ def spmhrf_parameters():
 
 def calculate_common_part(a, psi, t_r):
     fil_poles = np.array([psi * t_r])
-    hden = cons(fil_poles)
+    hden = np.real(cons(fil_poles))
     causal = np.array([x for x in fil_poles if np.real(x) < 0])
     n_causal = np.array([x for x in fil_poles if np.real(x) > 0])
     h_dc = cons(causal)
     h_dnc = cons(n_causal)
-    reconstruct = {'num': cons(a * t_r), 'den': np.array([h_dc, h_dnc])}
+    reconstruct = {'num': np.real(cons(a * t_r)), 'den': np.array([np.real(h_dc), np.real(h_dnc)])}
     return reconstruct, hden
 
 
@@ -64,4 +64,4 @@ def block_filter(a, psi, t_r):
     hnum = cons(np.append(a * t_r, 0))
     _, h = signal.freqz(hnum, hden, 1024)
     maxeig = np.max(np.power(np.abs(h), 2))
-    return {'num': hnum, 'den': reconstruct['den']}, reconstruct, maxeig
+    return {'num': np.real(hnum), 'den': reconstruct['den']}, reconstruct, maxeig
