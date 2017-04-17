@@ -4,9 +4,10 @@ import logging
 
 import numpy as np
 import scipy.io as sio
+import pywt
 
 from TotalActivation.filters import hrf
-from TotalActivation.process.temporal import wiener
+from TotalActivation.process.temporal import wiener, temporal_TA, mad
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
@@ -66,9 +67,13 @@ class TotalActivation(object):
         Temporal regularization.
         """
 
-        if config['Method_time'] == 'B' or config['Method_time'] == 'S':
-            print("Methods not yet implemented")
-        elif config['Method_time'] == 'W':
+        if self.config['Method_time'] is 'B' or self.config['Method_time'] is 'S':
+            _, coef = pywt.wavedec(self.data, 'db3', level=1, axis=0)
+            lambda_temp = mad(coef) * self.config['Lambda']
+            self.deconvolved_, noiseEstimateFin, lambdasTempFin, costTemp = \
+                temporal_TA(self.data, self.hrfparams[0], self.hrfparams[2], self.n_tp, self.t_iter,
+                                            noise_estimate_fin=None, lambda_temp=lambda_temp, cost_save=False)
+        elif config['Method_time'] is 'W':
             self.deconvolved_ = wiener(self.data, self.hrfparams[0], self.config['Lambda'], self.n_voxels, self.n_tp)
         else:
             print("Wrong temporal deconvolution method; must be B, S or W")
@@ -107,7 +112,9 @@ class TotalActivation(object):
         """
         data = sio.loadmat(d)['data']
         self.atlas = sio.loadmat(a)['atlas']
-        self.data = data[np.nonzero(self.atlas * np.ndarray.sum(data, axis=len(data.shape) - 1))]
+        self.data = data[np.nonzero(self.atlas * np.ndarray.sum(data, axis=len(data.shape) - 1))].T
+        self.n_voxels = self.data.shape[1]
+        self.n_tp = self.data.shape[0]
         logging.debug('self.data.shape={}'.format(self.data.shape))
         logging.debug('self.atlas.shape={}'.format(self.atlas.shape))
 

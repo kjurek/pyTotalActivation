@@ -57,7 +57,7 @@ def temporal_TA(X, f_analyze, max_eig, n_tp, Nit, noise_estimate_fin, lambda_tem
     else:
         lambdas_temp_fin = np.atleast_1d(lambda_temp).copy()
 
-    if cost_save is not None:
+    if cost_save is not False:
         cost_temp = np.zeros((Nit, 1))
     else:
         cost_temp = None
@@ -66,13 +66,13 @@ def temporal_TA(X, f_analyze, max_eig, n_tp, Nit, noise_estimate_fin, lambda_tem
     noise_estimate = np.minimum(noise_estimate, 0.95)
     precision = noise_estimate / 100000.0
 
-    z = np.zeros((n_tp, 1))
+    z = np.zeros_like(X)
     k = 0
     t = 1
-    s = np.zeros((n_tp, 1))
+    s = np.zeros_like(X)
 
     while k < Nit:
-        z_l = z
+        z_l = z.copy()
         z0 = filter_boundary_normal(f_analyze, X)
         z1 = 1.0 / (lambdas_temp_fin * max_eig) * z0
         z2 = filter_boundary_transpose(f_analyze, s)
@@ -86,9 +86,9 @@ def temporal_TA(X, f_analyze, max_eig, n_tp, Nit, noise_estimate_fin, lambda_tem
 
         if cost_save is not None:
             temp = X - lambdas_temp_fin * filter_boundary_transpose(f_analyze, z)
-            cost_temp[k] = np.sum(np.power(temp - X, 2)) / 2.0 + lambdas_temp_fin * np.sum(
-                np.abs(filter_boundary_normal(f_analyze, temp)))
-            noise_estimate_fin = np.sqrt(np.sum(np.power(temp - X, 2.0)) / n_tp)
+            cost_temp = np.sum(np.power(temp - X, 2), axis = 0) / 2.0 + lambdas_temp_fin * np.sum(
+                np.abs(filter_boundary_normal(f_analyze, temp)), axis = 0)
+            noise_estimate_fin = np.sqrt(np.sum(np.power(temp - X, 2.0), axis = 0) / n_tp)
         else:
             nv_tmp1 = filter_boundary_transpose(f_analyze, z)
             nv_tmp2 = lambdas_temp_fin * nv_tmp1
