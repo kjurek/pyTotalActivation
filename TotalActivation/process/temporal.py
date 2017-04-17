@@ -51,28 +51,29 @@ def wiener(X, hrfparam, Lambda, n_vox, n_tp):
 
 
 # TODO this function needs love
-def temporal_TA(y, f_analyze, max_eig, N, Nit, noise_estimate_fin, voxel_ind, lambda_temp, cost_save):
-    if noise_estimate_fin is not None and len(noise_estimate_fin) > voxel_ind:
-        lambdas_temp_fin = noise_estimate_fin[voxel_ind]
+def temporal_TA(X, f_analyze, max_eig, n_tp, Nit, noise_estimate_fin, lambda_temp, cost_save):
+    if noise_estimate_fin is not None:
+        lambdas_temp_fin = np.atleast_1d(noise_estimate_fin).copy()
     else:
-        lambdas_temp_fin = lambda_temp[voxel_ind - 1]
+        lambdas_temp_fin = np.atleast_1d(lambda_temp).copy()
 
     if cost_save is not None:
         cost_temp = np.zeros((Nit, 1))
     else:
         cost_temp = None
 
-    noise_estimate = lambda_temp[voxel_ind - 1]
+    noise_estimate = np.atleast_1d(lambda_temp).copy()
+    noise_estimate = np.minimum(noise_estimate, 0.95)
     precision = noise_estimate / 100000.0
 
-    z = np.zeros((N, 1))
+    z = np.zeros((n_tp, 1))
     k = 0
     t = 1
-    s = np.zeros((N, 1))
+    s = np.zeros((n_tp, 1))
 
     while k < Nit:
         z_l = z
-        z0 = filter_boundary_normal(f_analyze, y)
+        z0 = filter_boundary_normal(f_analyze, X)
         z1 = 1.0 / (lambdas_temp_fin * max_eig) * z0
         z2 = filter_boundary_transpose(f_analyze, s)
         z3 = filter_boundary_normal(f_analyze, z2)
@@ -84,18 +85,19 @@ def temporal_TA(y, f_analyze, max_eig, N, Nit, noise_estimate_fin, voxel_ind, la
         s = z + (t_l - 1.0) / t * (z - z_l)
 
         if cost_save is not None:
-            temp = y - lambdas_temp_fin * filter_boundary_transpose(f_analyze, z)
-            cost_temp[k] = np.sum(np.power(temp - y, 2)) / 2.0 + lambdas_temp_fin * np.sum(
+            temp = X - lambdas_temp_fin * filter_boundary_transpose(f_analyze, z)
+            cost_temp[k] = np.sum(np.power(temp - X, 2)) / 2.0 + lambdas_temp_fin * np.sum(
                 np.abs(filter_boundary_normal(f_analyze, temp)))
-            noise_estimate_fin = np.sqrt(np.sum(np.power(temp - y, 2.0)) / N)
+            noise_estimate_fin = np.sqrt(np.sum(np.power(temp - X, 2.0)) / n_tp)
         else:
             nv_tmp1 = filter_boundary_transpose(f_analyze, z)
             nv_tmp2 = lambdas_temp_fin * nv_tmp1
-            noise_estimate_fin = np.sqrt(np.power(np.sum(nv_tmp2), 2.0) / N)
+            noise_estimate_fin = np.sqrt(np.sum(np.power(nv_tmp2, 2.0), axis=0) / n_tp)
 
-        if np.abs(noise_estimate_fin - noise_estimate) > precision:
-            lambdas_temp_fin = lambdas_temp_fin * noise_estimate / noise_estimate_fin
+        if np.any(np.abs(noise_estimate_fin - noise_estimate) > precision):
+            gp = np.where(np.abs(noise_estimate_fin - noise_estimate) > precision)[0]
+            lambdas_temp_fin[gp] = lambdas_temp_fin[gp] * noise_estimate[gp] / noise_estimate_fin[gp]
         k += 1
 
-    x = y - lambdas_temp_fin * filter_boundary_transpose(f_analyze, z)
-    return x, noise_estimate_fin, lambdas_temp_fin, cost_temp
+    Y = X - lambdas_temp_fin * filter_boundary_transpose(f_analyze, z)
+    return Y, noise_estimate_fin, lambdas_temp_fin, cost_temp
