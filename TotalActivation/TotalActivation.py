@@ -154,6 +154,17 @@ class TotalActivation(object):
         logging.debug('self.data.shape={}'.format(self.data.shape))
         logging.debug('self.atlas.shape={}'.format(self.atlas.shape))
 
+    def load_text_data(self, d):
+        """
+        This file loads a time-by-space data matrix.
+
+        :param d: file in csv format
+        :return:
+        """
+
+        self.data = np.genfromtxt(d, delimiter=',')
+        self.n_voxels = self.data.shape[1]
+        self.n_tp = self.data.shape[0]
 
 if __name__ == '__main__':
     ta = TotalActivation()
