@@ -9,8 +9,9 @@ from TestBase import traverse_matlab_files
 from TotalActivation.process.temporal import temporal_TA
 from TotalActivation import TotalActivation
 
-    def test_TemporalTA(self):
+class MatlabComparisonTestTemporalTA(TestBase):
 
+    def test_TemporalTA(self):
         test_ta = TotalActivation()
         test_ta.load_text_data(os.path.join(self.data_path, 'TemporalTA/input_matlab_normalized.csv'),)
         test_ta.data = test_ta.data[:,0:10]
