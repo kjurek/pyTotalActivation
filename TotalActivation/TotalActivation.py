@@ -8,6 +8,7 @@ import pywt
 
 from TotalActivation.filters import hrf
 from TotalActivation.process.temporal import wiener, temporal_TA, mad
+from TotalActivation.process.spatial import tikhonov
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
@@ -63,28 +64,32 @@ class TotalActivation(object):
         else:
             raise ValueError('Method_time has to be B, S or W')
 
-    def _temporal(self):
+    def _temporal(self, d):
         """
         Temporal regularization.
         """
 
         if self.config['Method_time'] is 'B' or self.config['Method_time'] is 'S':
-            _, coef = pywt.wavedec(self.data, 'db3', level=1, axis=0)
+            _, coef = pywt.wavedec(d, 'db3', level=1, axis=0)
             lambda_temp = mad(coef) * self.config['Lambda']
             self.deconvolved_, noiseEstimateFin, lambdasTempFin, costTemp = \
-                temporal_TA(self.data, self.hrfparams[0], self.hrfparams[2], self.n_tp, self.t_iter,
-                                            noise_estimate_fin=None, lambda_temp=lambda_temp, cost_save=self.cost_save)
+                temporal_TA(d, self.hrfparams[0], self.hrfparams[2], self.n_tp, self.t_iter,
+                            noise_estimate_fin=None, lambda_temp=lambda_temp, cost_save=self.cost_save)
+
         elif config['Method_time'] is 'W':
-            self.deconvolved_ = wiener(self.data, self.hrfparams[0], self.config['Lambda'], self.n_voxels, self.n_tp)
+            self.deconvolved_ = wiener(d, self.hrfparams[0], self.config['Lambda'], self.n_voxels, self.n_tp)
         else:
             print("Wrong temporal deconvolution method; must be B, S or W")
 
-    def _spatial(self):
+    def _spatial(self, d, a):
         """
         Spatial regularization.
         """
 
-        print("Spatial regularization not yet implemented")
+        if self.config['Method_space'] is 'T':
+            self.deconvolved_ = tikhonov(d, a, self.data_masker, iter=self.s_iter)
+        else:
+            print("This spatial regularization method is not yet implemented")
 
     def _deconvolve(self):
         """
@@ -94,12 +99,31 @@ class TotalActivation(object):
         """
 
         if self.config['Method_space'] == None:
+            print("Temporal regularization...")
             self.t_iter *= 5
-            self._temporal()
+            self._temporal(self.data)
+            print("Done!")
         elif self.config['Method_space'] == 'S':
             print("Structured sparsity spatial regularization not yet implemented")
         elif self.config['Method_space'] == 'T':
-            print("Tikhonov spatial regularization not yet implemented")
+            self.s_iter = 100
+            TC_OUT = np.zeros_like(self.data)
+            xT = np.zeros_like(self.data)
+            xS = np.zeros_like(self.data)
+
+            k = 0
+            while k < 10:
+                print("Iteration %d of 10" % (k+1))
+                print("Temporal...")
+                self._temporal(TC_OUT - xT + self.data)
+                xT += self.deconvolved_ - TC_OUT
+                print("Spatial...")
+                self._spatial(TC_OUT, TC_OUT - xS + self.data)
+                xS += self.deconvolved_ - TC_OUT
+                TC_OUT = 0.5 * xT + 0.5 * xS
+                k += 1
+            self.deconvolved_ = TC_OUT
+            print("Done!")
         else:
             raise ValueError("Method_space must be S, T or None")
 
@@ -129,27 +153,27 @@ class TotalActivation(object):
         """
         from nilearn.input_data import NiftiMasker
 
-        atlas_masker = NiftiMasker(mask_strategy='background',
-                                   memory="nilearn_cache", memory_level=2,
-                                   standardize=False,
-                                   detrend=False)
+        self.atlas_masker = NiftiMasker(mask_strategy='background',
+                                        memory="nilearn_cache", memory_level=2,
+                                        standardize=False,
+                                        detrend=False)
 
-        data_masker = NiftiMasker(mask_strategy='epi',
-                                  memory="nilearn_cache", memory_level=2,
-                                  standardize=self.config['Standardize'],
-                                  detrend=self.config['Detrend'],
-                                  high_pass=self.config['Highpass'],
-                                  low_pass=self.config['Lowpass'],
-                                  t_r=self.config['TR'])
+        self.data_masker = NiftiMasker(mask_strategy='epi',
+                                       memory="nilearn_cache", memory_level=2,
+                                       standardize=self.config['Standardize'],
+                                       detrend=self.config['Detrend'],
+                                       high_pass=self.config['Highpass'],
+                                       low_pass=self.config['Lowpass'],
+                                       t_r=self.config['TR'])
 
-        atlas_masker.fit(a)
-        data_masker.fit(d)
-        x1 = data_masker.mask_img_.get_data()
-        x2 = atlas_masker.mask_img_.get_data()
+        self.atlas_masker.fit(a)
+        self.data_masker.fit(d)
+        x1 = self.data_masker.mask_img_.get_data()
+        x2 = self.atlas_masker.mask_img_.get_data()
         x1 *= x2
         x2 *= x1
-        self.data = data_masker.transform(d)
-        self.atlas = atlas_masker.transform(a)
+        self.data = self.data_masker.transform(d)
+        self.atlas = self.atlas_masker.transform(a)
         self.n_voxels = self.data.shape[1]
         self.n_tp = self.data.shape[0]
         logging.debug('self.data.shape={}'.format(self.data.shape))
@@ -166,6 +190,7 @@ class TotalActivation(object):
         self.data = np.genfromtxt(d, delimiter=',')
         self.n_voxels = self.data.shape[1]
         self.n_tp = self.data.shape[0]
+
 
 if __name__ == '__main__':
     ta = TotalActivation()
