@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import scipy.io as sio
 import pywt
+import time
 
 from TotalActivation.filters import hrf
 from TotalActivation.process.temporal import wiener, temporal_TA, mad
@@ -35,6 +36,7 @@ class TotalActivation(object):
         self.n_voxels = 0
         self.n_tp = 0
         self.cost_save = False
+        self.masking = False
 
         self._get_hrf_parameters()
 
@@ -76,7 +78,7 @@ class TotalActivation(object):
                 temporal_TA(d, self.hrfparams[0], self.hrfparams[2], self.n_tp, self.t_iter,
                             noise_estimate_fin=None, lambda_temp=lambda_temp, cost_save=self.cost_save)
 
-        elif config['Method_time'] is 'W':
+        elif self.config['Method_time'] is 'W':
             self.deconvolved_ = wiener(d, self.hrfparams[0], self.config['Lambda'], self.n_voxels, self.n_tp)
         else:
             print("Wrong temporal deconvolution method; must be B, S or W")
@@ -101,8 +103,9 @@ class TotalActivation(object):
         if self.config['Method_space'] == None:
             print("Temporal regularization...")
             self.t_iter *= 5
+            t0 = time.time()
             self._temporal(self.data)
-            print("Done!")
+            print("Done in %d seconds!" % (time.time() - t0))
         elif self.config['Method_space'] == 'S':
             print("Structured sparsity spatial regularization not yet implemented")
         elif self.config['Method_space'] == 'T':
@@ -110,10 +113,10 @@ class TotalActivation(object):
             TC_OUT = np.zeros_like(self.data)
             xT = np.zeros_like(self.data)
             xS = np.zeros_like(self.data)
-
+            t0 = time.time()
             k = 0
-            while k < 10:
-                print("Iteration %d of 10" % (k+1))
+            while k < 5:
+                print("Iteration %d of 10" % (k + 1))
                 print("Temporal...")
                 self._temporal(TC_OUT - xT + self.data)
                 xT += self.deconvolved_ - TC_OUT
@@ -123,7 +126,7 @@ class TotalActivation(object):
                 TC_OUT = 0.5 * xT + 0.5 * xS
                 k += 1
             self.deconvolved_ = TC_OUT
-            print("Done!")
+            print("Done in %d seconds!" % (time.time() - t0))
         else:
             raise ValueError("Method_space must be S, T or None")
 
@@ -152,22 +155,40 @@ class TotalActivation(object):
         a : atlas (3D NIFTI file)
         """
         from nilearn.input_data import NiftiMasker
+        import nibabel as nib
 
-        self.atlas_masker = NiftiMasker(mask_strategy='background',
-                                        memory="nilearn_cache", memory_level=2,
-                                        standardize=False,
-                                        detrend=False)
+        if self.masking is True:
+            self.atlas_masker = NiftiMasker(mask_strategy='background',
+                                            standardize=False,
+                                            detrend=False)
 
-        self.data_masker = NiftiMasker(mask_strategy='epi',
-                                       memory="nilearn_cache", memory_level=2,
-                                       standardize=self.config['Standardize'],
-                                       detrend=self.config['Detrend'],
-                                       high_pass=self.config['Highpass'],
-                                       low_pass=self.config['Lowpass'],
-                                       t_r=self.config['TR'])
+            self.data_masker = NiftiMasker(mask_strategy='epi',
+                                           standardize=self.config['Standardize'],
+                                           detrend=self.config['Detrend'],
+                                           high_pass=self.config['Highpass'],
+                                           low_pass=self.config['Lowpass'],
+                                           t_r=self.config['TR'])
 
-        self.atlas_masker.fit(a)
-        self.data_masker.fit(d)
+            self.atlas_masker.fit(a)
+            self.data_masker.fit(d)
+
+        else:
+            mask = np.ones(nib.load(d).shape[0:3])
+            maskimg = nib.Nifti1Image(mask, np.eye(4))
+            da = nib.load(d)
+            at = nib.load(a)
+
+            self.atlas_masker = NiftiMasker(mask_img=maskimg,
+                                            standardize=False,
+                                            detrend=False)
+
+            self.data_masker = NiftiMasker(mask_img=maskimg,
+                                           standardize=False,
+                                           detrend=False)
+
+            self.atlas_masker.fit(at)
+            self.data_masker.fit(da)
+
         x1 = self.data_masker.mask_img_.get_data()
         x2 = self.atlas_masker.mask_img_.get_data()
         x1 *= x2
