@@ -75,6 +75,7 @@ class TotalActivation(object):
             self.deconvolved_, noiseEstimateFin, lambdasTempFin, costTemp = \
                 temporal_TA(d, self.hrfparams[0], self.hrfparams[2], self.n_tp, self.t_iter,
                             noise_estimate_fin=None, lambda_temp=lambda_temp, cost_save=self.cost_save)
+
         elif config['Method_time'] is 'W':
             self.deconvolved_ = wiener(d, self.hrfparams[0], self.config['Lambda'], self.n_voxels, self.n_tp)
         else:
