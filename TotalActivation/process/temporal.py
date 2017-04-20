@@ -63,7 +63,7 @@ def temporal_TA(X, f_analyze, max_eig, n_tp, Nit, noise_estimate_fin, lambda_tem
         cost_temp = None
 
     noise_estimate = np.atleast_1d(lambda_temp).copy()
-    #noise_estimate = np.minimum(noise_estimate, 0.95)
+    noise_estimate = np.minimum(noise_estimate, 0.95)
     precision = noise_estimate / 100000.0
 
     z = np.zeros_like(X)

@@ -33,6 +33,7 @@ class TotalActivation(object):
         self.deconvolved_ = None
         self.n_voxels = 0
         self.n_tp = 0
+        self.cost_save = False
 
         self._get_hrf_parameters()
 
@@ -72,7 +73,7 @@ class TotalActivation(object):
             lambda_temp = mad(coef) * self.config['Lambda']
             self.deconvolved_, noiseEstimateFin, lambdasTempFin, costTemp = \
                 temporal_TA(self.data, self.hrfparams[0], self.hrfparams[2], self.n_tp, self.t_iter,
-                                            noise_estimate_fin=None, lambda_temp=lambda_temp, cost_save=False)
+                                            noise_estimate_fin=None, lambda_temp=lambda_temp, cost_save=self.cost_save)
         elif config['Method_time'] is 'W':
             self.deconvolved_ = wiener(self.data, self.hrfparams[0], self.config['Lambda'], self.n_voxels, self.n_tp)
         else:
