@@ -41,7 +41,8 @@ for usage, and a DISCLAIMER OF ALL WARRANTIES.
 
 All trademarks referenced herein are property of their respective holders.
 
-Copyright (c) 2017--, Karol Jurek, Marcel Falkiewicz
+Copyright (c) 2017--, Karol Jurek, Marcel Falkiewicz, Isik Karahanoglu, 
+                      Dimitri Van De Ville, Younes Farouj, Bolton Thomas
 """
 
 NAME = "pyTotalActivation"
@@ -52,7 +53,7 @@ LONG_DESCRIPTION = long_description
 URL = "http://github.com/kjurek/pyTotalActivation"
 DOWNLOAD_URL = ""
 LICENSE = "MIT"
-AUTHOR = "Karol Jurek, Marcel Falkiewicz"
+AUTHOR = "Karol Jurek, Marcel Falkiewicz, Isik Karahanoglu, Dimitri Van De Ville, Younes Farouj, Bolton Thomas"
 AUTHOR_EMAIL = "kjurek@gmail.com, mfalkiewicz@gmail.com"
 PLATFORMS = "OS Independent"
 MAJOR = _version_major
@@ -60,4 +61,4 @@ MINOR = _version_minor
 MICRO = _version_micro
 VERSION = __version__
 PACKAGE_DATA = {'pyTotalActivation': [pjoin('data', '*')]}
-REQUIRES = ["numpy", "nilearn"]
+REQUIRES = ["numpy", "nilearn", "pywt", "scipy", "time"]
