@@ -34,12 +34,12 @@ def wiener(X, hrfparam, Lambda, n_vox, n_tp):
     :return: Deconvolved time series
     """
 
-    f_num = np.abs(np.fft.fft(hrfparam[0]['num'], n_tp) ** 2)
+    f_num = np.abs(np.fft.fft(hrfparam['num'], n_tp) ** 2)
 
-    f_den = np.abs(np.fft.fft(hrfparam[0]['den'][0], n_tp) * \
-                   np.fft.fft(hrfparam[0]['den'][1], n_tp) * \
-                   t.hrfparams[0]['den'][-1] * \
-                   np.exp(np.arange(1, n_tp + 1) * (t.hrfparams[0]['den'][1].shape[0] - 1) / n_tp)) ** 2
+    f_den = np.abs(np.fft.fft(hrfparam['den'][0], n_tp) * \
+                   np.fft.fft(hrfparam['den'][1], n_tp) * \
+                   hrfparam['den'][-1] * \
+                   np.exp(np.arange(1, n_tp + 1) * (hrfparam['den'][1].shape[0] - 1) / n_tp)) ** 2
 
     _, coef = pywt.wavedec(X, 'db3', level=1, axis=0)
     lambda_temp = mad(coef) * Lambda ** 2 * n_tp
