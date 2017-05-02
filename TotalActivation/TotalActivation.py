@@ -4,12 +4,16 @@ import logging
 
 import numpy as np
 import scipy.io as sio
-import pywt
 import time
 
+import joblib
+from joblib import Parallel, delayed
+
+
 from TotalActivation.filters import hrf
-from TotalActivation.process.temporal import wiener, temporal_TA, mad
+from TotalActivation.process.temporal import wiener
 from TotalActivation.process.spatial import tikhonov
+from TotalActivation.process.utils import parallel_temporalTA
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
@@ -37,6 +41,8 @@ class TotalActivation(object):
         self.n_tp = 0
         self.cost_save = False
         self.masking = False
+        self.n_jobs = -2
+        self.n_iter = 5
 
         self._get_hrf_parameters()
 
@@ -72,11 +78,22 @@ class TotalActivation(object):
         """
 
         if self.config['Method_time'] is 'B' or self.config['Method_time'] is 'S':
-            _, coef = pywt.wavedec(d, 'db3', level=1, axis=0)
-            lambda_temp = mad(coef) * self.config['Lambda']
-            self.deconvolved_, noiseEstimateFin, lambdasTempFin, costTemp = \
-                temporal_TA(d, self.hrfparams[0], self.hrfparams[2], self.n_tp, self.t_iter,
-                            noise_estimate_fin=None, lambda_temp=lambda_temp, cost_save=self.cost_save)
+            # _, coef = pywt.wavedec(d, 'db3', level=1, axis=0)
+            # lambda_temp = mad(coef) * self.config['Lambda']
+            voxels = np.arange(self.n_voxels)
+            tempmem = np.memmap('temp.mmap', dtype=float, shape=(self.n_tp, self.n_voxels), mode="w+")
+
+            if self.n_jobs < 0:
+                n_splits = joblib.cpu_count() + self.n_jobs + 1
+            else:
+                n_splits = self.n_jobs
+
+            Parallel(n_jobs=self.n_jobs)(
+                delayed(parallel_temporalTA)(d, tempmem, x, self.config['Lambda'], self.hrfparams[0], self.hrfparams[2],
+                                             self.n_tp, self.t_iter, self.cost_save)
+                for x in np.array_split(voxels, n_splits))
+
+            self.deconvolved_ = tempmem
 
         elif self.config['Method_time'] is 'W':
             self.deconvolved_ = wiener(d, self.hrfparams[0], self.config['Lambda'], self.n_voxels, self.n_tp)
@@ -115,8 +132,10 @@ class TotalActivation(object):
             xS = np.zeros_like(self.data)
             t0 = time.time()
             k = 0
-            while k < 5:
-                print("Iteration %d of 10" % (k + 1))
+            while k < self.n_iter:
+
+
+                print("Iteration %d of %d" % (k + 1, self.n_iter))
                 print("Temporal...")
                 self._temporal(TC_OUT - xT + self.data)
                 xT += self.deconvolved_ - TC_OUT
