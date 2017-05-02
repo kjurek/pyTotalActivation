@@ -11,16 +11,17 @@ def load_matlab_data(d, a=None):
     a : atlas (Matlab file with 3D matrix 'atlas' variable) - optional
     """
     data = sio.loadmat(d)['data']
-    atlas = sio.loadmat(a)['atlas']
+    if a is not None:
+        atlas = sio.loadmat(a)['atlas']
+    else:
+        atlas = None
+
     data = data[np.nonzero(self.atlas * np.ndarray.sum(data, axis=len(data.shape) - 1))].T
 
-    if a is not None:
-        return data, atlas
-    else:
-        return data
+    return data, atlas
 
 
-def load_nifti(d, a=None):
+def load_nifti(d, a=None, detrend=True, standardize=True, highpass=0.01, lowpass=None, TR=2):
     """
     Basic function to load NIFTI time-series and flatten them to 2D array
 
@@ -31,11 +32,11 @@ def load_nifti(d, a=None):
     from nilearn.input_data import NiftiMasker
 
     data_masker = NiftiMasker(mask_strategy='epi',
-                              standardize=self.config['Standardize'],
-                              detrend=self.config['Detrend'],
-                              high_pass=self.config['Highpass'],
-                              low_pass=self.config['Lowpass'],
-                              t_r=self.config['TR'])
+                              standardize=standardize,
+                              detrend=detrend,
+                              high_pass=highpass,
+                              low_pass=lowpass,
+                              t_r=TR)
 
     data_masker.fit(d)
 
@@ -50,16 +51,16 @@ def load_nifti(d, a=None):
         x1 *= x2
         x2 *= x1
         atlas = atlas_masker.transform(a)
+    else:
+        atlas_masker = None
+        atlas = None
 
     data = data_masker.transform(d)
 
-    if a is not None:
-        return data, data_masker, atlas, atlas_masker
-    else:
-        return data, data_masker
+    return data, data_masker, atlas, atlas_masker
 
 
-def load_nifti_nomask(d, a=None):
+def load_nifti_nomask(d, a=None, detrend=True, standardize=True, highpass=0.01, lowpass=None, TR=2):
     """
     Basic function to load NIFTI time-series and flatten them to 2D array
 
@@ -75,8 +76,11 @@ def load_nifti_nomask(d, a=None):
 
     da = nib.load(d)
     data_masker = NiftiMasker(mask_img=maskimg,
-                              standardize=False,
-                              detrend=False)
+                              standardize=standardize,
+                              detrend=detrend,
+                              high_pass=highpass,
+                              low_pass=lowpass,
+                              t_r=TR)
     data_masker.fit(da)
 
     if a is not None:
@@ -87,13 +91,13 @@ def load_nifti_nomask(d, a=None):
                                    detrend=False)
         atlas_masker.fit(at)
         atlas = atlas_masker.transform(a)
+    else:
+        atlas_masker = None
+        atlas = None
 
     data = data_masker.transform(d)
 
-    if a is not None:
-        return data, data_masker, atlas, atlas_masker
-    else:
-        return data, data_masker
+    return data, data_masker, atlas, atlas_masker
 
 
 def load_text_data(d):
