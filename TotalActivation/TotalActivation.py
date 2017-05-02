@@ -10,6 +10,7 @@ import time
 from TotalActivation.filters import hrf
 from TotalActivation.process.temporal import wiener, temporal_TA, mad
 from TotalActivation.process.spatial import tikhonov
+from TotalActivation.preprocess.input import load_nifti, load_nifti_nomask, load_matlab_data, load_text_data
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
@@ -17,26 +18,52 @@ __all__ = ["TotalActivation"]
 
 
 class TotalActivation(object):
-    def __init__(self):
+    def __init__(self, method_time='B', method_space='S', hrf='bold', Lambda=1 / 0.8095, cost_save = False):
         # Method_time: 'B', 'S' or 'W'
         # Method_space: 'S', 'T', None
         # HRF: 'bold', 'spmhrf'
-        self.config = {'Method_time': 'B',
-                       'Method_space': None,
-                       'HRF': 'bold',
-                       'Detrend': True,
-                       'Standardize': True,
-                       'Highpass': 0.01,
-                       'Lowpass': None,
-                       'TR': 2,
-                       'Lambda': 1 / 0.8095}
+
+        # Input parameters
+        self.method_time = method_time
+        self.method_space = method_space
+        self.hrf = hrf
+        self.Lambda = Lambda
+        self.cost_save = cost_save
+
+        # Empty fields
         self.data = None
         self.atlas = None
         self.deconvolved_ = None
-        self.n_voxels = 0
-        self.n_tp = 0
-        self.cost_save = False
-        self.masking = False
+
+    def _load_data(self, f, a=None, mask=True, type='nifti', detrend=True, standardize=True, highpass=0.01, lowpass=None,
+             TR=2):
+        """
+        Wrapper function for loading all kinds of data
+        
+        :return: data or data + atlas in 2D 
+        """
+
+        global cmd
+        if type is 'nifti':
+            if mask is True:
+                cmd = load_nifti
+            elif mask is False:
+                cmd = load_nifti_nomask
+
+            self.data, self.data_masker, self.atlas, self.atlas_masker = cmd(f, a, detrend=detrend,
+                                                                             standardize=standardize,
+                                                                             highpass=highpass,
+                                                                             lowpass=lowpass, TR=TR)
+        elif type is 'mat':
+            self.data, self.atlas = load_matlab_data(f, a)
+        elif type is 'txt':
+            self.data = load_text_data(f)
+            self.atlas = None
+        else:
+            raise ValueError("Data type not supported. Valid options are 'nifti', 'mat' or 'txt'")
+
+        self.n_voxels = self.data.shape[1]
+        self.n_tp = self.data.shape[0]
 
         self._get_hrf_parameters()
 
@@ -47,21 +74,21 @@ class TotalActivation(object):
         :return:
         """
 
-        if self.config['HRF'] == 'bold':
+        if self.hrf == 'bold':
             a, psi = hrf.bold_parameters()
-        elif self.config['HRF'] == 'spmhrf':
+        elif self.hrf == 'spmhrf':
             a, psi = hrf.spmhrf_parameters()
         else:
             raise ValueError("HRF must be either bold or spmhrf")
 
-        if self.config['Method_time'] == 'B':
-            self.hrfparams = hrf.block_filter(a, psi, self.config['TR'])
+        if self.method_time == 'B':
+            self.hrfparams = hrf.block_filter(a, psi, self.TR)
             self.t_iter = 500
-        elif self.config['Method_time'] == 'S':
-            self.hrfparams = hrf.spike_filter(a, psi, self.config['TR'])
+        elif self.method_time == 'S':
+            self.hrfparams = hrf.spike_filter(a, psi, self.TR)
             self.t_iter = 200
-        elif self.config['Method_time'] == 'W':
-            self.hrfparams = hrf.block_filter(a, psi, self.config['TR'])
+        elif self.method_time == 'W':
+            self.hrfparams = hrf.block_filter(a, psi, self.TR)
             self.t_iter = 1
         else:
             raise ValueError('Method_time has to be B, S or W')
@@ -71,15 +98,17 @@ class TotalActivation(object):
         Temporal regularization.
         """
 
-        if self.config['Method_time'] is 'B' or self.config['Method_time'] is 'S':
+        assert d is not None, "Cannot run anything without loaded data!"
+
+        if self.method_time is 'B' or self.method_time is 'S':
             _, coef = pywt.wavedec(d, 'db3', level=1, axis=0)
-            lambda_temp = mad(coef) * self.config['Lambda']
+            lambda_temp = mad(coef) * self.Lambda
             self.deconvolved_, noiseEstimateFin, lambdasTempFin, costTemp = \
                 temporal_TA(d, self.hrfparams[0], self.hrfparams[2], self.n_tp, self.t_iter,
                             noise_estimate_fin=None, lambda_temp=lambda_temp, cost_save=self.cost_save)
 
-        elif self.config['Method_time'] is 'W':
-            self.deconvolved_ = wiener(d, self.hrfparams[0], self.config['Lambda'], self.n_voxels, self.n_tp)
+        elif self.method_time is 'W':
+            self.deconvolved_ = wiener(d, self.hrfparams[0], self.Lambda, self.n_voxels, self.n_tp)
         else:
             print("Wrong temporal deconvolution method; must be B, S or W")
 
@@ -88,7 +117,9 @@ class TotalActivation(object):
         Spatial regularization.
         """
 
-        if self.config['Method_space'] is 'T':
+        assert a is not None, "Cannot run spatial regularization without the atlas!"
+
+        if self.method_space is 'T':
             self.deconvolved_ = tikhonov(d, a, self.data_masker, iter=self.s_iter)
         else:
             print("This spatial regularization method is not yet implemented")
@@ -100,15 +131,15 @@ class TotalActivation(object):
         :return:
         """
 
-        if self.config['Method_space'] == None:
+        if self.method_space == None:
             print("Temporal regularization...")
             self.t_iter *= 5
             t0 = time.time()
             self._temporal(self.data)
             print("Done in %d seconds!" % (time.time() - t0))
-        elif self.config['Method_space'] == 'S':
+        elif self.method_space == 'S':
             print("Structured sparsity spatial regularization not yet implemented")
-        elif self.config['Method_space'] == 'T':
+        elif self.method_space == 'T':
             self.s_iter = 100
             TC_OUT = np.zeros_like(self.data)
             xT = np.zeros_like(self.data)
@@ -128,89 +159,7 @@ class TotalActivation(object):
             self.deconvolved_ = TC_OUT
             print("Done in %d seconds!" % (time.time() - t0))
         else:
-            raise ValueError("Method_space must be S, T or None")
-
-    def load_matlab_data(self, d, a):
-        """
-        Loads data and atlas in matlab format
-
-        Inputs:
-        d : data (Matlab file with 4D matrix 'data' variable)
-        a : atlas (Matlab file with 3D matrix 'atlas' variable)
-        """
-        data = sio.loadmat(d)['data']
-        self.atlas = sio.loadmat(a)['atlas']
-        self.data = data[np.nonzero(self.atlas * np.ndarray.sum(data, axis=len(data.shape) - 1))].T
-        self.n_voxels = self.data.shape[1]
-        self.n_tp = self.data.shape[0]
-        logging.debug('self.data.shape={}'.format(self.data.shape))
-        logging.debug('self.atlas.shape={}'.format(self.atlas.shape))
-
-    def load_nifti_data(self, d, a):
-        """
-        Basic function to load NIFTI time-series and flatten them to 2D array
-
-        Inputs:
-        d : data (4D NIFTI file)
-        a : atlas (3D NIFTI file)
-        """
-        from nilearn.input_data import NiftiMasker
-        import nibabel as nib
-
-        if self.masking is True:
-            self.atlas_masker = NiftiMasker(mask_strategy='background',
-                                            standardize=False,
-                                            detrend=False)
-
-            self.data_masker = NiftiMasker(mask_strategy='epi',
-                                           standardize=self.config['Standardize'],
-                                           detrend=self.config['Detrend'],
-                                           high_pass=self.config['Highpass'],
-                                           low_pass=self.config['Lowpass'],
-                                           t_r=self.config['TR'])
-
-            self.atlas_masker.fit(a)
-            self.data_masker.fit(d)
-
-        else:
-            mask = np.ones(nib.load(d).shape[0:3])
-            maskimg = nib.Nifti1Image(mask, np.eye(4))
-            da = nib.load(d)
-            at = nib.load(a)
-
-            self.atlas_masker = NiftiMasker(mask_img=maskimg,
-                                            standardize=False,
-                                            detrend=False)
-
-            self.data_masker = NiftiMasker(mask_img=maskimg,
-                                           standardize=False,
-                                           detrend=False)
-
-            self.atlas_masker.fit(at)
-            self.data_masker.fit(da)
-
-        x1 = self.data_masker.mask_img_.get_data()
-        x2 = self.atlas_masker.mask_img_.get_data()
-        x1 *= x2
-        x2 *= x1
-        self.data = self.data_masker.transform(d)
-        self.atlas = self.atlas_masker.transform(a)
-        self.n_voxels = self.data.shape[1]
-        self.n_tp = self.data.shape[0]
-        logging.debug('self.data.shape={}'.format(self.data.shape))
-        logging.debug('self.atlas.shape={}'.format(self.atlas.shape))
-
-    def load_text_data(self, d):
-        """
-        This file loads a time-by-space data matrix.
-
-        :param d: file in csv format
-        :return:
-        """
-
-        self.data = np.genfromtxt(d, delimiter=',')
-        self.n_voxels = self.data.shape[1]
-        self.n_tp = self.data.shape[0]
+            raise ValueError("method_space must be S, T or None")
 
 
 if __name__ == '__main__':
