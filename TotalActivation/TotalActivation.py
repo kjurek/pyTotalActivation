@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import logging
 
 import numpy as np
-import scipy.io as sio
+import os
 import time
 
 import joblib
@@ -50,12 +50,12 @@ class TotalActivation(object):
         """
 
         if ftype is 'nifti':
-            if mask is True:
-                cmd = load_nifti
-            elif mask is False:
+            if mask is False:
                 cmd = load_nifti_nomask
+            else:
+                cmd = load_nifti
 
-            self.data, self.data_masker, self.atlas, self.atlas_masker = cmd(f, a, detrend=detrend,
+            self.data, self.data_masker, self.atlas, self.atlas_masker = cmd(f, a, mask, detrend=detrend,
                                                                              standardize=standardize,
                                                                              highpass=highpass,
                                                                              lowpass=lowpass, TR=TR)

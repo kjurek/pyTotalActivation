@@ -1,5 +1,6 @@
 import scipy.io as sio
 import numpy as np
+import os
 
 
 def load_matlab_data(d, a=None):
@@ -21,7 +22,7 @@ def load_matlab_data(d, a=None):
     return data, atlas
 
 
-def load_nifti(d, a=None, detrend=True, standardize=True, highpass=0.01, lowpass=None, TR=2):
+def load_nifti(d, a=None, m=True, detrend=True, standardize=True, highpass=0.01, lowpass=None, TR=2):
     """
     Basic function to load NIFTI time-series and flatten them to 2D array
 
@@ -31,12 +32,17 @@ def load_nifti(d, a=None, detrend=True, standardize=True, highpass=0.01, lowpass
     """
     from nilearn.input_data import NiftiMasker
 
-    data_masker = NiftiMasker(mask_strategy='epi',
-                              standardize=standardize,
-                              detrend=detrend,
-                              high_pass=highpass,
-                              low_pass=lowpass,
-                              t_r=TR)
+    data_masker = NiftiMasker(
+        standardize=standardize,
+        detrend=detrend,
+        high_pass=highpass,
+        low_pass=lowpass,
+        t_r=TR)
+
+    if m is True:
+        data_masker.mask_strategy = 'epi'
+    elif os.path.isfile(m):
+        data_masker.mask_img = m
 
     data_masker.fit(d)
 
@@ -60,7 +66,7 @@ def load_nifti(d, a=None, detrend=True, standardize=True, highpass=0.01, lowpass
     return data, data_masker, atlas, atlas_masker
 
 
-def load_nifti_nomask(d, a=None, detrend=True, standardize=True, highpass=0.01, lowpass=None, TR=2):
+def load_nifti_nomask(d, a=None, m=False, detrend=True, standardize=True, highpass=0.01, lowpass=None, TR=2):
     """
     Basic function to load NIFTI time-series and flatten them to 2D array
 
