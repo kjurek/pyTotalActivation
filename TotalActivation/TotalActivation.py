@@ -13,7 +13,7 @@ from TotalActivation.filters import hrf
 from TotalActivation.process.temporal import wiener
 from TotalActivation.process.spatial import tikhonov
 from TotalActivation.preprocess.input import load_nifti, load_nifti_nomask, load_matlab_data, load_text_data
-from TotalActivation.process.utils import parallel_temporalTA
+from TotalActivation.process.parallel import parallel_temporalTA
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
