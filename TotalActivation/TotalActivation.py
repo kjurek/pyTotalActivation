@@ -18,7 +18,7 @@ __all__ = ["TotalActivation"]
 
 
 class TotalActivation(object):
-    def __init__(self, method_time='B', method_space='S', hrf='bold', Lambda=1 / 0.8095, cost_save = False):
+    def __init__(self, method_time='B', method_space='S', hrf='bold', Lambda=1 / 0.8095, cost_save=False):
         # Method_time: 'B', 'S' or 'W'
         # Method_space: 'S', 'T', None
         # HRF: 'bold', 'spmhrf'
@@ -35,16 +35,16 @@ class TotalActivation(object):
         self.atlas = None
         self.deconvolved_ = None
 
-    def _load_data(self, f, a=None, mask=True, type='nifti', detrend=True, standardize=True, highpass=0.01, lowpass=None,
-             TR=2):
+    def _load_data(self, f, a=None, mask=True, ftype='nifti', detrend=True, standardize=True, highpass=0.01,
+                   lowpass=None,
+                   TR=2):
         """
-        Wrapper function for loading all kinds of data
+        Wrapper for loading all kinds of data
         
         :return: data or data + atlas in 2D 
         """
 
-        global cmd
-        if type is 'nifti':
+        if ftype is 'nifti':
             if mask is True:
                 cmd = load_nifti
             elif mask is False:
@@ -54,9 +54,9 @@ class TotalActivation(object):
                                                                              standardize=standardize,
                                                                              highpass=highpass,
                                                                              lowpass=lowpass, TR=TR)
-        elif type is 'mat':
+        elif ftype is 'mat':
             self.data, self.atlas = load_matlab_data(f, a)
-        elif type is 'txt':
+        elif ftype is 'txt':
             self.data = load_text_data(f)
             self.atlas = None
         else:
@@ -81,13 +81,13 @@ class TotalActivation(object):
         else:
             raise ValueError("HRF must be either bold or spmhrf")
 
-        if self.method_time == 'B':
+        if self.method_time is 'B':
             self.hrfparams = hrf.block_filter(a, psi, self.TR)
             self.t_iter = 500
-        elif self.method_time == 'S':
+        elif self.method_time is 'S':
             self.hrfparams = hrf.spike_filter(a, psi, self.TR)
             self.t_iter = 200
-        elif self.method_time == 'W':
+        elif self.method_time is 'W':
             self.hrfparams = hrf.block_filter(a, psi, self.TR)
             self.t_iter = 1
         else:
@@ -131,15 +131,15 @@ class TotalActivation(object):
         :return:
         """
 
-        if self.method_space == None:
+        if self.method_space is None:
             print("Temporal regularization...")
             self.t_iter *= 5
             t0 = time.time()
             self._temporal(self.data)
             print("Done in %d seconds!" % (time.time() - t0))
-        elif self.method_space == 'S':
+        elif self.method_space is 'S':
             print("Structured sparsity spatial regularization not yet implemented")
-        elif self.method_space == 'T':
+        elif self.method_space is 'T':
             self.s_iter = 100
             TC_OUT = np.zeros_like(self.data)
             xT = np.zeros_like(self.data)
