@@ -69,6 +69,7 @@ class TotalActivation(object):
 
         self.n_voxels = self.data.shape[1]
         self.n_tp = self.data.shape[0]
+        self.TR = TR
 
         self._get_hrf_parameters()
 
