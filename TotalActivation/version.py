@@ -61,4 +61,4 @@ MINOR = _version_minor
 MICRO = _version_micro
 VERSION = __version__
 PACKAGE_DATA = {'pyTotalActivation': [pjoin('data', '*')]}
-REQUIRES = ["numpy", "nilearn", "PyWavelets", "scipy", "time"]
+REQUIRES = ["numpy", "nilearn", "PyWavelets", "scipy"]
