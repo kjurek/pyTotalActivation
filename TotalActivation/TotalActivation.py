@@ -9,7 +9,6 @@ import time
 import joblib
 from joblib import Parallel, delayed
 
-
 from TotalActivation.filters import hrf
 from TotalActivation.process.temporal import wiener
 from TotalActivation.process.spatial import tikhonov
@@ -40,7 +39,6 @@ class TotalActivation(object):
         self.data = None
         self.atlas = None
         self.deconvolved_ = None
-
 
     def _load_data(self, f, a=None, mask=True, ftype='nifti', detrend=True, standardize=True, highpass=0.01,
                    lowpass=None,
@@ -105,11 +103,9 @@ class TotalActivation(object):
         Temporal regularization.
         """
 
-
         assert d is not None, "Cannot run anything without loaded data!"
 
-
-        if self.config['Method_time'] is 'B' or self.config['Method_time'] is 'S':
+        if self.method_time is 'B' or self.method_time is 'S':
             # _, coef = pywt.wavedec(d, 'db3', level=1, axis=0)
             # lambda_temp = mad(coef) * self.config['Lambda']
             voxels = np.arange(self.n_voxels)
@@ -145,7 +141,7 @@ class TotalActivation(object):
 
     def _deconvolve(self):
         """
-        Main control function for deconvolution
+        Main method for deconvolution
 
         :return:
         """
@@ -166,8 +162,6 @@ class TotalActivation(object):
             t0 = time.time()
             k = 0
             while k < self.n_iter:
-
-
                 print("Iteration %d of %d" % (k + 1, self.n_iter))
                 print("Temporal...")
                 self._temporal(TC_OUT - xT + self.data)
