@@ -7,6 +7,8 @@ import numpy as np
 
 from TotalActivation.filters.filter_boundary import filter_boundary_normal, filter_boundary_transpose
 
+# from TotalActivation.process.utils import mad
+
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 
@@ -34,12 +36,12 @@ def wiener(X, hrfparam, Lambda, n_vox, n_tp):
     :return: Deconvolved time series
     """
 
-    f_num = np.abs(np.fft.fft(hrfparam[0]['num'], n_tp) ** 2)
+    f_num = np.abs(np.fft.fft(hrfparam['num'], n_tp) ** 2)
 
-    f_den = np.abs(np.fft.fft(hrfparam[0]['den'][0], n_tp) * \
-                   np.fft.fft(hrfparam[0]['den'][1], n_tp) * \
-                   t.hrfparams[0]['den'][-1] * \
-                   np.exp(np.arange(1, n_tp + 1) * (t.hrfparams[0]['den'][1].shape[0] - 1) / n_tp)) ** 2
+    f_den = np.abs(np.fft.fft(hrfparam['den'][0], n_tp) * \
+                   np.fft.fft(hrfparam['den'][1], n_tp) * \
+                   hrfparam['den'][-1] * \
+                   np.exp(np.arange(1, n_tp + 1) * (hrfparam['den'][1].shape[0] - 1) / n_tp)) ** 2
 
     _, coef = pywt.wavedec(X, 'db3', level=1, axis=0)
     lambda_temp = mad(coef) * Lambda ** 2 * n_tp
@@ -51,16 +53,35 @@ def wiener(X, hrfparam, Lambda, n_vox, n_tp):
 
 
 # TODO this function needs love
-def temporal_TA(X, f_analyze, max_eig, n_tp, Nit, noise_estimate_fin, lambda_temp, cost_save):
-    if noise_estimate_fin is not None:
-        lambdas_temp_fin = np.atleast_1d(noise_estimate_fin).copy()
-    else:
-        lambdas_temp_fin = np.atleast_1d(lambda_temp).copy()
+def temporal_TA(X, f_analyze, max_eig, n_tp, Nit, noise_estimate_fin, l, cost_save, voxels=None):
+    if voxels is None:
+        _, coef = pywt.wavedec(X, 'db3', level=1, axis=0)
+        lambda_temp = mad(coef) * l
+        if noise_estimate_fin is not None:
+            lambdas_temp_fin = np.atleast_1d(noise_estimate_fin).copy()
+        else:
+            lambdas_temp_fin = np.atleast_1d(lambda_temp).copy()
 
-    if cost_save is not False:
-        cost_temp = np.zeros((Nit, 1))
+        if cost_save is not False:
+            cost_temp = np.zeros((Nit, 1))
+        else:
+            cost_temp = None
+
+
     else:
-        cost_temp = None
+        X = X[:, voxels]
+        _, coef = pywt.wavedec(X, 'db3', level=1, axis=0)
+        lambda_temp = mad(coef) * l
+
+        if noise_estimate_fin is not None:
+            lambdas_temp_fin = np.atleast_1d(noise_estimate_fin[voxels]).copy()
+        else:
+            lambdas_temp_fin = np.atleast_1d(lambda_temp).copy()
+
+        if cost_save is not False:
+            cost_temp = np.zeros((Nit, 1))
+        else:
+            cost_temp = None
 
     noise_estimate = np.atleast_1d(lambda_temp).copy()
     noise_estimate = np.minimum(noise_estimate, 0.95)
@@ -100,4 +121,4 @@ def temporal_TA(X, f_analyze, max_eig, n_tp, Nit, noise_estimate_fin, lambda_tem
         k += 1
 
     Y = X - lambdas_temp_fin * filter_boundary_transpose(f_analyze, z)
-    return Y, noise_estimate_fin, lambdas_temp_fin, cost_temp
+    return Y  # , noise_estimate_fin, lambdas_temp_fin, cost_temp
