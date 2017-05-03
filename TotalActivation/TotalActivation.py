@@ -21,7 +21,7 @@ __all__ = ["TotalActivation"]
 
 
 class TotalActivation(object):
-    def __init__(self, method_time='B', method_space='S', hrf='bold', Lambda=1 / 0.8095, cost_save=False):
+    def __init__(self, method_time='B', method_space='T', hrf='bold', Lambda=1 / 0.8095, cost_save=False):
         # Method_time: 'B', 'S' or 'W'
         # Method_space: 'S', 'T', None
         # HRF: 'bold', 'spmhrf'
@@ -118,7 +118,7 @@ class TotalActivation(object):
                 n_splits = self.n_jobs
 
             Parallel(n_jobs=self.n_jobs)(
-                delayed(parallel_temporalTA)(d, tempmem, x, self.config['Lambda'], self.hrfparams[0], self.hrfparams[2],
+                delayed(parallel_temporalTA)(d, tempmem, x, self.Lambda, self.hrfparams[0], self.hrfparams[2],
                                              self.n_tp, self.t_iter, self.cost_save)
                 for x in np.array_split(voxels, n_splits))
 
